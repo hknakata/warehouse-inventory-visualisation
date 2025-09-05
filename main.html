@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Inventory Visualization</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7f9;
+            color: #333;
+            line-height: 1.6;
+            padding: 15px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #2c3e50 0%, #4a6491 100%);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin-bottom: 8px;
+            font-size: 1.8rem;
+        }
+        
+        .description {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .map-container {
+            flex: 2;
+            min-width: 300px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            position: relative;
+        }
+        
+        .info-panel {
+            flex: 1;
+            min-width: 230px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+        }
+        
+        .warehouse-map {
+            width: 100%;
+            background-color: #eaeff5;
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+        }
+        
+        .zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .zone-label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #2c3e50;
+            padding: 2px 8px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 4px;
+        }
+        
+        .location-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 3px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 5px;
+            min-height: 200px;
+            width: 100%;
+        }
+        
+        .row-container {
+            display: flex;
+            gap: 2px;
+            min-height: 15px;
+        }
+        
+        .group-container {
+            display: grid;
+            gap: 1px;
+            border: 3px solid #2c3e50;
+            border-radius: 3px;
+            padding: 2px;
+            min-height: 15px;
+        }
+        
+        .group-1 {
+            grid-template-columns: repeat(4, 1fr);
+            min-width: 60px;
+        }
+        
+        .group-2 {
+            grid-template-columns: repeat(3, 1fr);
+            min-width: 45px;
+        }
+        
+        .location {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #34495e;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 6px;
+            font-weight: bold;
+            position: relative;
+        }
+        
+        /* Group border colors based on utilization */
+        .group-container.group-border-available {
+            border-color: #2ecc71 !important; /* Green - 0% */
+        }
+        
+        .group-container.group-border-low {
+            border-color: #f1c40f !important; /* Yellow - 1-33% */
+        }
+        
+        .group-container.group-border-medium {
+            border-color: #e67e22 !important; /* Orange - 34-66% */
+        }
+        
+        .group-container.group-border-high {
+            border-color: #e74c3c !important; /* Red - 67-100% */
+        }
+        
+        .location.available {
+            background-color: rgba(46, 204, 113, 0.7);
+        }
+        
+        .location.level-1 {
+            background-color: rgba(255, 193, 7, 0.7); /* 33% - Yellow */
+        }
+        
+        .location.level-2 {
+            background-color: rgba(255, 152, 0, 0.7); /* 66% - Orange */
+        }
+        
+        .location.level-3 {
+            background-color: rgba(231, 76, 60, 0.7); /* 100% - Red */
+        }
+        
+        .location:hover {
+            transform: scale(1.5);
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+        
+        /* Group utilization display */
+        .group-utilization {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1px 3px;
+            border-radius: 2px;
+            border: 1px solid #34495e;
+        }
+        
+        .location-details {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            display: none;
+            font-size: 0.9rem;
+        }
+        
+        .location-details.active {
+            display: block;
+        }
+        
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 180px;
+        }
+        
+        .filter-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+        
+        .filter-group select, .filter-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+        
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stat-box {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px;
+            background: linear-gradient(135deg, #4a6491 0%, #2c3e50 100%);
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1px solid #34495e;
+        }
+        
+        .available-color {
+            background-color: rgba(46, 204, 113, 0.7);
+        }
+        
+        .level-1-color {
+            background-color: rgba(255, 193, 7, 0.7);
+        }
+        
+        .level-2-color {
+            background-color: rgba(255, 152, 0, 0.7);
+        }
+        
+        .level-3-color {
+            background-color: rgba(231, 76, 60, 0.7);
+        }
+        
+        @media (max-width: 1100px) {
+            .warehouse-map {
+                flex-direction: column;
+                padding: 8px;
+            }
+            
+            .zone {
+                margin-bottom: 15px;
+            }
+            
+            .location {
+                width: 18px;
+                height: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>仓库库存可视化</h1>
+            <p class="description">5个区域（每个区域13×7网格）的库存状态可视化表示</p>
+        </header>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <label for="status-filter">按状态筛选</label>
+                <select id="status-filter">
+                    <option value="all">所有位置</option>
+                    <option value="available">可用</option>
+                    <option value="occupied">已占用</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="zone-filter">按区域筛选</label>
+                <select id="zone-filter">
+                    <option value="all">所有区域</option>
+                    <option value="A">区域 A</option>
+                    <option value="B">区域 B</option>
+                    <option value="C">区域 C</option>
+                    <option value="D">区域 D</option>
+                    <option value="E">区域 E</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="search">搜索位置</label>
+                <input type="text" id="search" placeholder="输入位置代码（例如：A-42）">
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div class="map-container">
+                <h2>仓库平面图</h2>
+                <div class="warehouse-map" id="warehouse-map">
+                    <!-- Zones will be dynamically added here -->
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color available-color"></div>
+                        <span>可用 (0%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color level-1-color"></div>
+                        <span>低利用率 (33%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color level-2-color"></div>
+                        <span>中利用率 (66%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color level-3-color"></div>
+                        <span>高利用率 (100%)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <h2>位置详情</h2>
+                <div class="location-details" id="location-details">
+                    <p>选择一个位置查看详情</p>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-label">总位置数</div>
+                        <div class="stat-value" id="total-locations">455</div>
+                    </div>
+                    
+                    <div class="stat-box">
+                        <div class="stat-label">可用</div>
+                        <div class="stat-value" id="available-locations">0</div>
+                    </div>
+                    
+                    <div class="stat-box">
+                        <div class="stat-label">已占用</div>
+                        <div class="stat-value" id="occupied-locations">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate inventory data for 5 zones (A-E) with 91 locations each (13x7)
+        function generateInventoryData() {
+            const zones = ['E', 'D', 'C', 'B', 'A']; // E on left, A on right
+            const data = [];
+            
+            zones.forEach(zone => {
+                for (let row = 1; row <= 13; row++) {
+                    // Create specific patterns for demonstration
+                    let group1Fill = 0; // Group 1 (columns 1-4) fill level
+                    let group2Fill = 0; // Group 2 (columns 5-7) fill level
+                    
+                    // Create different utilization patterns for demonstration
+                    if (row === 1) {
+                        // Row 1: Group 1 = 0%, Group 2 = 0% (both empty)
+                        group1Fill = 0;
+                        group2Fill = 0;
+                    } else if (row === 2) {
+                        // Row 2: Group 1 = 0%, Group 2 = 100% (one empty, one full)
+                        group1Fill = 0;
+                        group2Fill = 3;
+                    } else if (row === 3) {
+                        // Row 3: Group 1 = 100%, Group 2 = 0% (one full, one empty)
+                        group1Fill = 4;
+                        group2Fill = 0;
+                    } else if (row === 4) {
+                        // Row 4: Group 1 = 0%, Group 2 = 33% (one empty, one partial)
+                        group1Fill = 0;
+                        group2Fill = 1;
+                    } else if (row === 5) {
+                        // Row 5: Group 1 = 50%, Group 2 = 0% (one partial, one empty)
+                        group1Fill = 2;
+                        group2Fill = 0;
+                    } else {
+                        // Random fill for other rows
+                        const totalColumns = 7;
+                        let columnsToFill;
+                        
+                        // 30% chance for fully occupied row, 70% chance for partial fill
+                        if (Math.random() < 0.3) {
+                            columnsToFill = 7;
+                        } else {
+                            const fillPercentage = 0.6 + Math.random() * 0.3;
+                            columnsToFill = Math.floor(totalColumns * fillPercentage);
+                        }
+                        
+                        // Distribute between groups
+                        group1Fill = Math.min(4, Math.floor(columnsToFill * 0.6)); // 60% to group 1
+                        group2Fill = Math.min(3, columnsToFill - group1Fill); // Rest to group 2
+                    }
+                    
+                    // Fill Group 1 (columns 1-4)
+                    for (let col = 1; col <= 4; col++) {
+                        const isOccupied = col <= group1Fill;
+                        const locationId = `${zone}-${(row-1)*7 + col}`;
+                        const cbm = (Math.floor(Math.random() * 20) + 5);
+                        
+                        let item = '';
+                        let stackLevel = 0;
+                        
+                        if (isOccupied) {
+                            const items = ['电子产品', '家具', '汽车用品', '纺织品', '体育用品', 
+                                         '玩具', '工具', '家用电器', '园艺用品', '书籍', '服装', '鞋类'];
+                            item = items[Math.floor(Math.random() * items.length)];
+                            stackLevel = Math.floor(Math.random() * 3) + 1;
+                        }
+                        
+                        data.push({
+                            id: locationId,
+                            zone: zone,
+                            row: row,
+                            column: col,
+                            cbm: cbm,
+                            item: item,
+                            status: isOccupied ? 'occupied' : 'available',
+                            stackLevel: stackLevel
+                        });
+                    }
+                    
+                    // Fill Group 2 (columns 5-7)
+                    for (let col = 5; col <= 7; col++) {
+                        const isOccupied = (col - 4) <= group2Fill;
+                        const locationId = `${zone}-${(row-1)*7 + col}`;
+                        const cbm = (Math.floor(Math.random() * 20) + 5);
+                        
+                        let item = '';
+                        let stackLevel = 0;
+                        
+                        if (isOccupied) {
+                            const items = ['电子产品', '家具', '汽车用品', '纺织品', '体育用品', 
+                                         '玩具', '工具', '家用电器', '园艺用品', '书籍', '服装', '鞋类'];
+                            item = items[Math.floor(Math.random() * items.length)];
+                            stackLevel = Math.floor(Math.random() * 3) + 1;
+                        }
+                        
+                        data.push({
+                            id: locationId,
+                            zone: zone,
+                            row: row,
+                            column: col,
+                            cbm: cbm,
+                            item: item,
+                            status: isOccupied ? 'occupied' : 'available',
+                            stackLevel: stackLevel
+                        });
+                    }
+                }
+            });
+            
+            return data;
+        }
+        
+        const inventoryData = generateInventoryData();
+        
+        // Initialize the warehouse map
+        function initWarehouseMap() {
+            const warehouseMap = document.getElementById('warehouse-map');
+            
+            // Create zones E, D, C, B, A (E on left, A on right)
+            const zones = ['E', 'D', 'C', 'B', 'A'];
+            
+            zones.forEach(zone => {
+                const zoneElement = document.createElement('div');
+                zoneElement.className = 'zone';
+                zoneElement.id = `zone-${zone}`;
+                
+                const zoneLabel = document.createElement('div');
+                zoneLabel.className = 'zone-label';
+                zoneLabel.textContent = `Zone ${zone}`;
+                
+                const gridElement = document.createElement('div');
+                gridElement.className = 'location-grid';
+                
+                // Create rows (1-13)
+                for (let row = 1; row <= 13; row++) {
+                    const rowContainer = document.createElement('div');
+                    rowContainer.className = 'row-container';
+                    
+                    // Get data for this row
+                    const rowData = inventoryData.filter(item => item.zone === zone && item.row === row);
+                    
+                    // Create group 1 container (columns 1-4) for this row
+                    const group1Container = document.createElement('div');
+                    group1Container.className = 'group-container group-1';
+                    
+                    // Create group 2 container (columns 5-7) for this row
+                    const group2Container = document.createElement('div');
+                    group2Container.className = 'group-container group-2';
+                    
+                    // Calculate group utilizations for this row
+                    const group1Data = rowData.filter(item => item.column >= 1 && item.column <= 4);
+                    const group2Data = rowData.filter(item => item.column >= 5 && item.column <= 7);
+                    const group1Utilization = calculateGroupUtilization(group1Data);
+                    const group2Utilization = calculateGroupUtilization(group2Data);
+                    
+                    // Add border color classes to group containers
+                    const group1BorderClass = getGroupBorderColorClass(group1Utilization);
+                    const group2BorderClass = getGroupBorderColorClass(group2Utilization);
+                    group1Container.classList.add(group1BorderClass);
+                    group2Container.classList.add(group2BorderClass);
+                    
+                    // Add locations to group 1
+                    group1Data.forEach(location => {
+                        const locationElement = createLocationElement(location);
+                        group1Container.appendChild(locationElement);
+                    });
+                    
+                    // Add locations to group 2
+                    group2Data.forEach(location => {
+                        const locationElement = createLocationElement(location);
+                        group2Container.appendChild(locationElement);
+                    });
+                    
+                    // Add group containers to row
+                    rowContainer.appendChild(group1Container);
+                    rowContainer.appendChild(group2Container);
+                    
+                    // Add row to main grid
+                    gridElement.appendChild(rowContainer);
+                }
+                
+                // Add group utilization displays for the zone
+                // Calculate total zone utilization for display
+                const zoneData = inventoryData.filter(item => item.zone === zone);
+                const group1Data = zoneData.filter(item => item.column >= 1 && item.column <= 4);
+                const group2Data = zoneData.filter(item => item.column >= 5 && item.column <= 7);
+                const group1Utilization = calculateGroupUtilization(group1Data);
+                const group2Utilization = calculateGroupUtilization(group2Data);
+                addGroupUtilization(zone, gridElement, group1Utilization, group2Utilization);
+                
+                zoneElement.appendChild(zoneLabel);
+                zoneElement.appendChild(gridElement);
+                warehouseMap.appendChild(zoneElement);
+            });
+            
+            updateStats();
+        }
+        
+        // Show location details in the info panel
+        function showLocationDetails(location) {
+            const detailsPanel = document.getElementById('location-details');
+            const utilizationPercent = location.stackLevel * 33.33;
+            const statusText = location.status === 'available' ? '可用' : `${location.stackLevel}/3 层 (${utilizationPercent.toFixed(0)}%)`;
+            
+            detailsPanel.innerHTML = `
+                <h3>位置: ${location.id}</h3>
+                <p><strong>状态:</strong> <span style="color: ${location.status === 'available' ? '#2ecc71' : '#e74c3c'}">${statusText}</span></p>
+                <p><strong>容量:</strong> ${location.cbm} 立方米</p>
+                <p><strong>区域:</strong> ${location.zone}</p>
+                <p><strong>网格位置:</strong> 第${location.row}行，第${location.column}列</p>
+                ${location.item ? `<p><strong>当前物品:</strong> ${location.item}</p>` : '<p><strong>当前物品:</strong> 无</p>'}
+                <p><strong>堆叠层数:</strong> ${location.stackLevel}/3</p>
+            `;
+            detailsPanel.classList.add('active');
+        }
+        
+        // Update statistics
+        function updateStats() {
+            const totalLocations = inventoryData.length;
+            const availableLocations = inventoryData.filter(loc => loc.status === 'available').length;
+            const occupiedLocations = totalLocations - availableLocations;
+            
+            document.getElementById('total-locations').textContent = totalLocations;
+            document.getElementById('available-locations').textContent = availableLocations;
+            document.getElementById('occupied-locations').textContent = occupiedLocations;
+        }
+        
+        // Initialize filters
+        function initFilters() {
+            const statusFilter = document.getElementById('status-filter');
+            const zoneFilter = document.getElementById('zone-filter');
+            const searchInput = document.getElementById('search');
+            
+            statusFilter.addEventListener('change', filterLocations);
+            zoneFilter.addEventListener('change', filterLocations);
+            searchInput.addEventListener('input', filterLocations);
+        }
+        
+        // Filter locations based on selected criteria
+        function filterLocations() {
+            const statusValue = document.getElementById('status-filter').value;
+            const zoneValue = document.getElementById('zone-filter').value;
+            const searchValue = document.getElementById('search').value.toLowerCase();
+            
+            const locations = document.querySelectorAll('.location');
+            
+            locations.forEach(location => {
+                const locationId = location.getAttribute('data-id');
+                const locationData = inventoryData.find(item => item.id === locationId);
+                
+                let statusMatch = statusValue === 'all' || locationData.status === statusValue;
+                let zoneMatch = zoneValue === 'all' || locationData.zone === zoneValue;
+                let searchMatch = locationId.toLowerCase().includes(searchValue);
+                
+                if (statusMatch && zoneMatch && searchMatch) {
+                    location.style.display = 'flex';
+                } else {
+                    location.style.display = 'none';
+                }
+            });
+        }
+        
+        // Add group utilization display
+        function addGroupUtilization(zone, gridElement, group1Utilization, group2Utilization) {
+            // Add utilization display for group 1 (above column 2)
+            const group1Display = document.createElement('div');
+            group1Display.className = 'group-utilization';
+            group1Display.style.left = '25%';
+            group1Display.textContent = `${group1Utilization}%`;
+            group1Display.style.color = getUtilizationColor(group1Utilization);
+            gridElement.appendChild(group1Display);
+            
+            // Add utilization display for group 2 (above column 6)
+            const group2Display = document.createElement('div');
+            group2Display.className = 'group-utilization';
+            group2Display.style.left = '75%';
+            group2Display.textContent = `${group2Utilization}%`;
+            group2Display.style.color = getUtilizationColor(group2Utilization);
+            gridElement.appendChild(group2Display);
+        }
+        
+        // Calculate group utilization percentage
+        function calculateGroupUtilization(groupData) {
+            if (groupData.length === 0) return 0;
+            
+            const totalCapacity = groupData.length * 3; // 3 levels per location
+            const usedCapacity = groupData.reduce((sum, location) => sum + location.stackLevel, 0);
+            return Math.round((usedCapacity / totalCapacity) * 100);
+        }
+        
+        // Get color based on utilization percentage
+        function getUtilizationColor(utilization) {
+            if (utilization === 0) return '#2ecc71'; // Green
+            if (utilization <= 33) return '#f1c40f'; // Yellow
+            if (utilization <= 66) return '#e67e22'; // Orange
+            return '#e74c3c'; // Red
+        }
+        
+        // Get group border color class based on utilization percentage
+        function getGroupBorderColorClass(utilization) {
+            if (utilization === 0) return 'group-border-available';
+            if (utilization <= 33) return 'group-border-low';
+            if (utilization <= 66) return 'group-border-medium';
+            return 'group-border-high';
+        }
+        
+        // Create location element
+        function createLocationElement(location) {
+            const locationElement = document.createElement('div');
+            let className = 'location';
+            
+            if (location.status === 'available') {
+                className += ' available';
+            } else {
+                className += ` level-${location.stackLevel}`;
+            }
+            
+            locationElement.className = className;
+            locationElement.setAttribute('data-id', location.id);
+            locationElement.setAttribute('data-group', location.column <= 4 ? '1' : '2');
+            locationElement.setAttribute('data-col', location.column);
+            locationElement.title = `${location.id}: ${location.cbm} 立方米, ${location.stackLevel === 0 ? '可用' : `${location.stackLevel}/3 层`}`;
+            
+            // Add click event to show details
+            locationElement.addEventListener('click', () => {
+                showLocationDetails(location);
+                // Highlight selected location
+                document.querySelectorAll('.location').forEach(loc => {
+                    loc.style.boxShadow = 'none';
+                });
+                locationElement.style.boxShadow = '0 0 0 2px #3498db';
+            });
+            
+            return locationElement;
+        }
+        
+        // Initialize the application when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initWarehouseMap();
+            initFilters();
+        });
+    </script>
+</body>
+</html>
